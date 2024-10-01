@@ -1,6 +1,10 @@
 import cv2
 import easyocr
 import keyboard
+from gtts import gTTS
+from io import BytesIO
+import tempfile
+import os
 import time
 
 # Initialize EasyOCR Reader
@@ -17,6 +21,40 @@ def extract_text_from_frame(frame):
     # Extract text from results
     text = ' '.join([result[1] for result in results])
     return text
+
+def speak_text(text):
+    """Convert text to speech using gTTS."""
+    if text.strip():  # Check if text is not empty
+        try:
+            # Create a BytesIO object to hold the audio data
+            audio_data = BytesIO()
+
+            # Convert text to speech and write it into the BytesIO object
+            tts = gTTS(text=text, lang='en', slow=False)
+            tts.write_to_fp(audio_data)
+
+            # Rewind the BytesIO object to the beginning
+            audio_data.seek(0)
+
+            # Use a temporary file to play the audio without saving permanently
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio_file:
+                temp_audio_file.write(audio_data.read())
+                temp_file_name = temp_audio_file.name
+
+            # Ensure the file is closed before trying to access it
+            os.startfile(temp_file_name)
+
+            # Give some time for the audio to play before deleting the file
+            time.sleep(5)
+
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_file_name):
+                os.remove(temp_file_name)
+    else:
+        print("No text detected.")
+        # Notify if no text was detected
+        speak_text("No text detected.")
 
 def main():
     cap = cv2.VideoCapture(1)  # Change to the correct camera index if needed
@@ -39,8 +77,11 @@ def main():
                 text = extract_text_from_frame(frame)
                 if text.strip():  # Check if text is not empty
                     print(f"Extracted Text: {text}")
+                    # Convert text to speech
+                    speak_text(text)
                 else:
-                    print("No text detected.")
+                    # Notify if no text was detected
+                    speak_text("No text detected.")
             # Small delay to prevent rapid repeated detections
             time.sleep(0.1)
         else:
